@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="com.obiscr.chatgpt.settings.EasyCodeState">
+    <option name="projectFiles" value="$PROJECT_DIR$/src/main/java/com/vn/model/Audio.java;C:/Users/vinig/Desktop/Music Project/Audio Application/src/main/java/com/vn/model/Music.java;C:/Users/vinig/Desktop/Music Project/Audio Application/src/main/java/com/vn/model/Playable.java;C:/Users/vinig/Desktop/Music Project/Audio Application/src/main/java/com/vn/model/Podcast.java;C:/Users/vinig/Desktop/Music Project/Audio Application/src/main/java/com/vn/repository/HistoryRepository.java;C:/Users/vinig/Desktop/Music Project/Audio Application/src/main/java/com/vn/repository/MusicRepository.java;C:/Users/vinig/Desktop/Music Project/Audio Application/src/main/java/com/vn/repository/PodcastRepository.java;C:/Users/vinig/Desktop/Music Project/Audio Application/src/main/java/com/vn/service/MusicService.java;C:/Users/vinig/Desktop/Music Project/Audio Application/src/main/java/com/vn/service/PodcastService.java;C:/Users/vinig/Desktop/Music Project/Audio Application/src/main/java/com/vn/Main.java;C:/Users/vinig/Desktop/Music Project/Audio Application/History.json" />
+  </component>
+</project>
