@@ -7,7 +7,15 @@ import java.io.IOException;
 import java.util.List;
 
 public class PodcastService {
-    private final PodcastRepository podcastRepository = new PodcastRepository();
+    private final PodcastRepository podcastRepository;
+
+    public PodcastService() {
+        this(new PodcastRepository());
+    }
+
+    public PodcastService(PodcastRepository podcastRepository) {
+        this.podcastRepository = podcastRepository;
+    }
 
     public List<Podcast> searchPodcast(String search) throws IOException, InterruptedException {
         return podcastRepository.searchPodcast(search);

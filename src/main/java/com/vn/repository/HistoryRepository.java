@@ -1,13 +1,14 @@
 package com.vn.repository;
 
+import com.vn.config.AppConfig;
 import com.vn.model.Music;
-import com.vn.model.Podcast;
 import com.vn.model.Playable;
+import com.vn.model.Podcast;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -15,121 +16,172 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class HistoryRepository {
-    private static final Path DATA_DIRECTORY = Path.of("data");
-    private static final Path HISTORY_FILE = DATA_DIRECTORY.resolve("History.json");
+    private static final Path DEFAULT_HISTORY_FILE = AppConfig.HISTORY_FILE;
+
+    private final Path historyFile;
+    private final Path dataDirectory;
+
+    public HistoryRepository() {
+        this(DEFAULT_HISTORY_FILE);
+    }
+
+    public HistoryRepository(Path historyFile) {
+        this.historyFile = historyFile;
+        this.dataDirectory = historyFile.toAbsolutePath().getParent();
+    }
 
     public void saveMusic(Music music) throws IOException {
-        if (music == null) return;
-        List<Playable> audios = new ArrayList<>();
-        audios.addAll(loadMusics());
-        audios.addAll(loadPodcasts());
-        audios.add(music);
-        saveAll(audios);
+        saveAudio(music);
     }
 
     public void savePodcast(Podcast podcast) throws IOException {
-        if (podcast == null) return;
-        List<Playable> audios = new ArrayList<>();
-        audios.addAll(loadMusics());
-        audios.addAll(loadPodcasts());
-        audios.add(podcast);
-        saveAll(audios);
+        saveAudio(podcast);
     }
 
     public void saveAll(List<Playable> audios) throws IOException {
-        JSONArray musicsArray = new JSONArray();
-        JSONArray podcastsArray = new JSONArray();
+        JSONObject root = new JSONObject();
+        JSONArray musics = new JSONArray();
+        JSONArray podcasts = new JSONArray();
 
         for (Playable audio : audios) {
             if (audio instanceof Music music) {
-                musicsArray.put(toJson(music));
+                musics.put(toJson(music));
             } else if (audio instanceof Podcast podcast) {
-                podcastsArray.put(toJson(podcast));
+                podcasts.put(toJson(podcast));
             }
         }
 
-        JSONObject json = new JSONObject();
-        json.put("musics", musicsArray);
-        json.put("podcasts", podcastsArray);
-        writeJson(json);
+        root.put("musics", musics);
+        root.put("podcasts", podcasts);
+        writeJson(root.toString(2));
+    }
+
+    public List<Playable> loadAll() throws IOException {
+        List<Playable> audios = new ArrayList<>();
+        audios.addAll(loadMusics());
+        audios.addAll(loadPodcasts());
+        return audios;
     }
 
     public List<Music> loadMusics() throws IOException {
-        JSONObject json = loadJson();
+        JSONObject root = loadRootJson();
+        JSONArray musicsArray = root.optJSONArray("musics");
         List<Music> musics = new ArrayList<>();
-        if (json.has("musics")) {
-            JSONArray arr = json.getJSONArray("musics");
-            for (int i = 0; i < arr.length(); i++) {
-                JSONObject m = arr.getJSONObject(i);
-                Music music = new Music(
-                        m.getString("title"),
-                        m.getString("artist"),
-                        m.getString("album"),
-                        m.getString("genre"),
-                        m.getInt("duration")
-                );
-                music.setRating(m.getInt("rating"));
-                musics.add(music);
-            }
+        if (musicsArray == null) {
+            return musics;
         }
+
+        for (int i = 0; i < musicsArray.length(); i++) {
+            JSONObject item = musicsArray.optJSONObject(i);
+            if (item == null) {
+                continue;
+            }
+
+            String title = item.optString("title", "").trim();
+            String artist = item.optString("artist", "").trim();
+            String album = item.optString("album", "").trim();
+            if (title.isEmpty() || artist.isEmpty() || album.isEmpty()) {
+                continue;
+            }
+
+            Music music = new Music(
+                    title,
+                    artist,
+                    album,
+                    item.optString("genre", "Unknown"),
+                    item.optInt("duration", 0)
+            );
+            music.setRating(item.optInt("rating", 0));
+            musics.add(music);
+        }
+
         return musics;
     }
 
     public List<Podcast> loadPodcasts() throws IOException {
-        JSONObject json = loadJson();
+        JSONObject root = loadRootJson();
+        JSONArray podcastsArray = root.optJSONArray("podcasts");
         List<Podcast> podcasts = new ArrayList<>();
-        if (json.has("podcasts")) {
-            JSONArray arr = json.getJSONArray("podcasts");
-            for (int i = 0; i < arr.length(); i++) {
-                JSONObject p = arr.getJSONObject(i);
-                Podcast podcast = new Podcast(
-                        p.getString("title"),
-                        p.getString("host"),
-                        p.getInt("duration"),
-                        p.optString("episodeTitle", ""),
-                        p.optInt("episodeNumber", 0)
-                );
-                podcast.setRating(p.getInt("rating"));
-                podcasts.add(podcast);
-            }
+        if (podcastsArray == null) {
+            return podcasts;
         }
+
+        for (int i = 0; i < podcastsArray.length(); i++) {
+            JSONObject item = podcastsArray.optJSONObject(i);
+            if (item == null) {
+                continue;
+            }
+
+            String title = item.optString("title", "").trim();
+            String host = item.optString("host", "").trim();
+            if (title.isEmpty() || host.isEmpty()) {
+                continue;
+            }
+
+            Podcast podcast = new Podcast(
+                    title,
+                    host,
+                    item.optInt("duration", 0),
+                    item.optString("episodeTitle", ""),
+                    item.optInt("episodeNumber", 0)
+            );
+            podcast.setRating(item.optInt("rating", 0));
+            podcasts.add(podcast);
+        }
+
         return podcasts;
     }
 
+    private void saveAudio(Playable audio) throws IOException {
+        if (audio == null) {
+            return;
+        }
+
+        List<Playable> audios = loadAll();
+        audios.add(audio);
+        saveAll(audios);
+    }
+
+    private JSONObject loadRootJson() throws IOException {
+        if (!Files.exists(historyFile)) {
+            return new JSONObject();
+        }
+
+        String content = Files.readString(historyFile, StandardCharsets.UTF_8).trim();
+        if (content.isEmpty()) {
+            return new JSONObject();
+        }
+
+        return new JSONObject(content);
+    }
+
+    private void writeJson(String json) throws IOException {
+        if (dataDirectory != null) {
+            Files.createDirectories(dataDirectory);
+        }
+
+        Path tempFile = historyFile.resolveSibling(historyFile.getFileName() + ".tmp");
+        Files.writeString(tempFile, json, StandardCharsets.UTF_8);
+        Files.move(tempFile, historyFile, StandardCopyOption.REPLACE_EXISTING);
+    }
+
     private JSONObject toJson(Music music) {
-        JSONObject musicJson = new JSONObject();
-        musicJson.put("title", music.getTitle());
-        musicJson.put("artist", music.getArtist());
-        musicJson.put("album", music.getAlbum());
-        musicJson.put("genre", music.getGenre());
-        musicJson.put("duration", music.getDuration());
-        musicJson.put("rating", music.getRating());
-        return musicJson;
+        return new JSONObject()
+                .put("title", music.getTitle())
+                .put("artist", music.getArtist())
+                .put("album", music.getAlbum())
+                .put("genre", music.getGenre())
+                .put("duration", music.getDuration())
+                .put("rating", music.getRating());
     }
 
     private JSONObject toJson(Podcast podcast) {
-        JSONObject podcastJson = new JSONObject();
-        podcastJson.put("title", podcast.getTitle());
-        podcastJson.put("host", podcast.getHost());
-        podcastJson.put("duration", podcast.getDuration());
-        podcastJson.put("rating", podcast.getRating());
-        podcastJson.put("episodeTitle", podcast.getEpisodeTitle());
-        podcastJson.put("episodeNumber", podcast.getEpisodeNumber());
-        return podcastJson;
-    }
-
-    private JSONObject loadJson() throws IOException {
-        File file = HISTORY_FILE.toFile();
-        if (!file.exists()) return new JSONObject();
-        String content = Files.readString(HISTORY_FILE);
-        return new JSONObject(content.isEmpty() ? "{}" : content);
-    }
-
-    private void writeJson(JSONObject json) throws IOException {
-        Files.createDirectories(DATA_DIRECTORY);
-        Path target = HISTORY_FILE;
-        Path temp = DATA_DIRECTORY.resolve("History.json.tmp");
-        Files.writeString(temp, json.toString(4));
-        Files.move(temp, target, StandardCopyOption.REPLACE_EXISTING);
+        return new JSONObject()
+                .put("title", podcast.getTitle())
+                .put("host", podcast.getHost())
+                .put("duration", podcast.getDuration())
+                .put("rating", podcast.getRating())
+                .put("episodeTitle", podcast.getEpisodeTitle())
+                .put("episodeNumber", podcast.getEpisodeNumber());
     }
 }

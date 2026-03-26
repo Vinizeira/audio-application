@@ -9,7 +9,7 @@ public class FavoritesService {
     public List<Playable> getFavorites(List<Playable> audios) {
         List<Playable> favorites = new ArrayList<>();
         for (Playable audio : audios) {
-            if (audio.getRating() >= 3) {
+            if (audio.isFavorite()) {
                 favorites.add(audio);
             }
         }

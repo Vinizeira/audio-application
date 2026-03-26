@@ -1,26 +1,21 @@
 package com.vn.model;
 
-public class Podcast implements Playable {
-    private String title;
-    private String host;
-    private int duration;
-    private int rating;
-    private String episodeTitle;
-    private int episodeNumber;
+public class Podcast extends Audio {
+    private final String host;
+    private final String episodeTitle;
+    private final int episodeNumber;
 
     public Podcast(String title, String host, int duration) {
-        this.title = title;
+        super(title, duration);
         this.host = host;
-        this.duration = duration;
-        this.rating = 0;
+        this.episodeTitle = "";
+        this.episodeNumber = 0;
     }
 
     public Podcast(String title, String host, int duration, String episodeTitle, int episodeNumber) {
-        this.title = title;
+        super(title, duration);
         this.host = host;
-        this.duration = duration;
-        this.rating = 0;
-        this.episodeTitle = episodeTitle;
+        this.episodeTitle = episodeTitle == null ? "" : episodeTitle;
         this.episodeNumber = episodeNumber;
     }
 
@@ -32,34 +27,23 @@ public class Podcast implements Playable {
         return episodeTitle;
     }
 
-    public int getDuration() {
-        return duration;
-    }
-
-    public int getRating() {
-        return rating;
-    }
-
-    public void setRating(int rating) {
-        this.rating = rating;
-    }
-
-    public String getTitle() {
-        return title;
-    }
-
     public String getHost() {
         return host;
     }
 
-    public String getFormattedDuration() {
-        int minutes = duration / 60000;
-        int seconds = (duration % 60000) / 1000;
-        return String.format("%d min %d sec", minutes, seconds);
+    @Override
+    public String toString() {
+        return getTitle() + " - hosted by " + host;
     }
 
     @Override
-    public String toString() {
-        return title + " - hosted by " + host;
+    public boolean hasSameIdentity(Playable other) {
+        if (!(other instanceof Podcast podcast)) {
+            return false;
+        }
+
+        return sameText(getTitle(), podcast.getTitle())
+                && sameText(host, podcast.getHost())
+                && episodeNumber == podcast.getEpisodeNumber();
     }
 }
